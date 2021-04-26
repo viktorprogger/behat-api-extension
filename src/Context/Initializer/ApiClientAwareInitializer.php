@@ -1,10 +1,13 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Imbo\BehatApiExtension\Context\Initializer;
 
-use Imbo\BehatApiExtension\Context\ApiClientAwareContext;
 use Behat\Behat\Context\Context;
 use Behat\Behat\Context\Initializer\ContextInitializer;
 use GuzzleHttp\Client;
+use Imbo\BehatApiExtension\Context\ApiClientAwareContext;
 use RuntimeException;
 
 /**
@@ -14,18 +17,20 @@ use RuntimeException;
  *
  * @author Christer Edvartsen <cogo@starzinger.net>
  */
-class ApiClientAwareInitializer implements ContextInitializer {
+class ApiClientAwareInitializer implements ContextInitializer
+{
     /**
      * @var array Guzzle client configuration array
      */
-    private $guzzleConfig = [];
+    private array $guzzleConfig;
 
     /**
      * Class constructor
      *
      * @param array $guzzleConfig Guzzle client configuration array
      */
-    public function __construct(array $guzzleConfig) {
+    public function __construct(array $guzzleConfig)
+    {
         $this->guzzleConfig = $guzzleConfig;
     }
 
@@ -36,7 +41,8 @@ class ApiClientAwareInitializer implements ContextInitializer {
      *
      * @param Context $context
      */
-    public function initializeContext(Context $context) {
+    public function initializeContext(Context $context): void
+    {
         if ($context instanceof ApiClientAwareContext) {
             // Fetch base URI from the Guzzle client configuration, if it exists
             $baseUri = !empty($this->guzzleConfig['base_uri']) ? $this->guzzleConfig['base_uri'] : null;
@@ -53,16 +59,16 @@ class ApiClientAwareInitializer implements ContextInitializer {
      * Validate a connection to the base URI
      *
      * @param string $baseUri
+     *
      * @return boolean
      */
-    private function validateConnection($baseUri) {
+    private function validateConnection(string $baseUri): bool
+    {
         $parts = parse_url($baseUri);
         $host = $parts['host'];
-        $port = isset($parts['port']) ? $parts['port'] : ($parts['scheme'] === 'https' ? 443 : 80);
+        $port = $parts['port'] ?? ($parts['scheme'] === 'https' ? 443 : 80);
 
-        set_error_handler(function () {
-            return true;
-        });
+        set_error_handler(static fn () => true);
 
         $resource = fsockopen($host, $port);
         restore_error_handler();

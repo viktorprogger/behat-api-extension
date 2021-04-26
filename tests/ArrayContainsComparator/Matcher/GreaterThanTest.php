@@ -1,13 +1,17 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Imbo\BehatApiExtension\ArrayContainsComparator\Matcher;
 
-use PHPUnit_Framework_TestCase;
+use PHPUnit\Framework\TestCase;
 
 /**
  * @coversDefaultClass Imbo\BehatApiExtension\ArrayContainsComparator\Matcher\GreaterThan
  * @testdox Numeric greater than matcher
  */
-class GreaterThanTest extends PHPUnit_Framework_TestCase {
+class GreaterThanTest extends TestCase
+{
     /**
      * @var GreaterThan
      */
@@ -16,7 +20,8 @@ class GreaterThanTest extends PHPUnit_Framework_TestCase {
     /**
      * Set up matcher instance
      */
-    public function setup() {
+    public function setup(): void
+    {
         $this->matcher = new GreaterThan();
     }
 
@@ -25,7 +30,8 @@ class GreaterThanTest extends PHPUnit_Framework_TestCase {
      *
      * @return array[]
      */
-    public function getValuesForMatching() {
+    public function getValuesForMatching()
+    {
         return [
             'integer' => [
                 'number' => 2,
@@ -47,27 +53,28 @@ class GreaterThanTest extends PHPUnit_Framework_TestCase {
      *
      * @return array[]
      */
-    public function getFailingValues() {
+    public function getFailingValues()
+    {
         return [
             [
                 'number' => 123,
                 'min' => 123,
-                'errorMessage' => '"123" is not greater than "123".'
+                'errorMessage' => '"123" is not greater than "123".',
             ],
             [
                 'number' => 123,
                 'min' => 456,
-                'errorMessage' => '"123" is not greater than "456".'
+                'errorMessage' => '"123" is not greater than "456".',
             ],
             [
                 'number' => 1.23,
                 'min' => 4.56,
-                'errorMessage' => '"1.23" is not greater than "4.56".'
+                'errorMessage' => '"1.23" is not greater than "4.56".',
             ],
             [
                 'number' => "1.23",
                 'min' => "4.56",
-                'errorMessage' => '"1.23" is not greater than "4.56".'
+                'errorMessage' => '"1.23" is not greater than "4.56".',
             ],
         ];
     }
@@ -79,7 +86,8 @@ class GreaterThanTest extends PHPUnit_Framework_TestCase {
      * @param numeric $number
      * @param numeric $min
      */
-    public function testCanCompareValuesOfType($number, $min) {
+    public function testCanCompareValuesOfType($number, $min)
+    {
         $matcher = $this->matcher;
         $this->assertNull(
             $matcher($number, $min),
@@ -92,7 +100,8 @@ class GreaterThanTest extends PHPUnit_Framework_TestCase {
      * @expectedException InvalidArgumentException
      * @expectedExceptionMessage "foo" is not numeric.
      */
-    public function testThrowsExceptionIfNumberIsNotNumeric() {
+    public function testThrowsExceptionIfNumberIsNotNumeric()
+    {
         $matcher = $this->matcher;
         $matcher('foo', 123);
     }
@@ -102,7 +111,8 @@ class GreaterThanTest extends PHPUnit_Framework_TestCase {
      * @expectedException InvalidArgumentException
      * @expectedExceptionMessage "foo" is not numeric.
      */
-    public function testThrowsExceptionIfMinimumNumberIsNotNumeric() {
+    public function testThrowsExceptionIfMinimumNumberIsNotNumeric()
+    {
         $matcher = $this->matcher;
         $matcher(123, 'foo');
     }
@@ -116,7 +126,8 @@ class GreaterThanTest extends PHPUnit_Framework_TestCase {
      * @param numeric $min
      * @param string $errorMessage
      */
-    public function testThrowsExceptionWhenComparisonFails($number, $min, $errorMessage) {
+    public function testThrowsExceptionWhenComparisonFails($number, $min, $errorMessage)
+    {
         $this->expectExceptionMessage($errorMessage);
         $matcher = $this->matcher;
         $matcher($number, $min);

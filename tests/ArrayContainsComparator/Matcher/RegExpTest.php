@@ -1,13 +1,17 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Imbo\BehatApiExtension\ArrayContainsComparator\Matcher;
 
-use PHPUnit_Framework_TestCase;
+use PHPUnit\Framework\TestCase;
 
 /**
  * @coversDefaultClass Imbo\BehatApiExtension\ArrayContainsComparator\Matcher\RegExp
  * @testdox Regular expression pattern matcher
  */
-class RegExpTest extends PHPUnit_Framework_TestCase {
+class RegExpTest extends TestCase
+{
     /**
      * @var RegExp
      */
@@ -16,7 +20,8 @@ class RegExpTest extends PHPUnit_Framework_TestCase {
     /**
      * Set up matcher instance
      */
-    public function setup() {
+    public function setup(): void
+    {
         $this->matcher = new RegExp();
     }
 
@@ -25,7 +30,8 @@ class RegExpTest extends PHPUnit_Framework_TestCase {
      *
      * @return array[]
      */
-    public function getSubjectsAndPatterns() {
+    public function getSubjectsAndPatterns()
+    {
         return [
             'a regular string' => [
                 'subject' => 'some string',
@@ -44,10 +50,12 @@ class RegExpTest extends PHPUnit_Framework_TestCase {
 
     /**
      * @expectedException InvalidArgumentException
-     * @expectedExceptionMessage Regular expression matching can only be applied to strings, integers or doubles, got "boolean".
+     * @expectedExceptionMessage Regular expression matching can only be applied to strings, integers or doubles, got
+     *     "boolean".
      * @covers ::__invoke
      */
-    public function testThrowsExceptionIfSubjectIsNotASupportedVariableType() {
+    public function testThrowsExceptionIfSubjectIsNotASupportedVariableType()
+    {
         $matcher = $this->matcher;
         $matcher(true, '/true/');
     }
@@ -55,10 +63,12 @@ class RegExpTest extends PHPUnit_Framework_TestCase {
     /**
      * @dataProvider getSubjectsAndPatterns
      * @covers ::__invoke
+     *
      * @param scalar $subject
      * @param string $pattern
      */
-    public function testCanMatchRegularExpressionPatternsAgainst($subject, $pattern) {
+    public function testCanMatchRegularExpressionPatternsAgainst($subject, $pattern)
+    {
         $matcher = $this->matcher;
         $matcher($subject, $pattern);
     }
@@ -68,7 +78,8 @@ class RegExpTest extends PHPUnit_Framework_TestCase {
      * @expectedException InvalidArgumentException
      * @expectedExceptionMessage Subject "some string" did not match pattern "/SOME STRING/".
      */
-    public function testThrowsExceptionIfPatternDoesNotMatchSubject() {
+    public function testThrowsExceptionIfPatternDoesNotMatchSubject()
+    {
         $matcher = $this->matcher;
         $matcher('some string', '/SOME STRING/');
     }

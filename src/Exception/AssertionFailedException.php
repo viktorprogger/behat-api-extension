@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Imbo\BehatApiExtension\Exception;
 
 use Exception;
@@ -8,4 +11,6 @@ use Exception;
  *
  * @author Christer Edvartsen <cogo@starzinger.net>
  */
-class AssertionFailedException extends Exception {}
+class AssertionFailedException extends Exception
+{
+}

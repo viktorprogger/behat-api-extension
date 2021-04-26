@@ -1,13 +1,17 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Imbo\BehatApiExtension\ArrayContainsComparator\Matcher;
 
-use PHPUnit_Framework_TestCase;
+use PHPUnit\Framework\TestCase;
 
 /**
  * @coversDefaultClass Imbo\BehatApiExtension\ArrayContainsComparator\Matcher\ArrayMaxLength
  * @testdox Array max length matcher
  */
-class ArrayMaxLengthTest extends PHPUnit_Framework_TestCase {
+class ArrayMaxLengthTest extends TestCase
+{
     /**
      * @var ArrayMaxLength
      */
@@ -16,7 +20,8 @@ class ArrayMaxLengthTest extends PHPUnit_Framework_TestCase {
     /**
      * Set up matcher instance
      */
-    public function setup() {
+    public function setup(): void
+    {
         $this->matcher = new ArrayMaxLength();
     }
 
@@ -25,7 +30,8 @@ class ArrayMaxLengthTest extends PHPUnit_Framework_TestCase {
      *
      * @return array[]
      */
-    public function getArraysAndLengths() {
+    public function getArraysAndLengths()
+    {
         return [
             [
                 'list' => [],
@@ -47,7 +53,8 @@ class ArrayMaxLengthTest extends PHPUnit_Framework_TestCase {
      *
      * @return array[]
      */
-    public function getInvalidValues() {
+    public function getInvalidValues()
+    {
         return [
             [
                 'value' => 123,
@@ -69,7 +76,8 @@ class ArrayMaxLengthTest extends PHPUnit_Framework_TestCase {
      *
      * @return array[]
      */
-    public function getValuesThatFail() {
+    public function getValuesThatFail()
+    {
         return [
             [
                 'array' => [1, 2],
@@ -91,7 +99,8 @@ class ArrayMaxLengthTest extends PHPUnit_Framework_TestCase {
      * @param array $array
      * @param int $length
      */
-    public function testCanMatchMaxLengthOfArrays(array $array, $length) {
+    public function testCanMatchMaxLengthOfArrays(array $array, $length)
+    {
         $matcher = $this->matcher;
         $this->assertNull(
             $matcher($array, $length),
@@ -107,7 +116,8 @@ class ArrayMaxLengthTest extends PHPUnit_Framework_TestCase {
      * @param mixed $value
      * @param string $message
      */
-    public function testThrowsExceptionWhenMatchingAgainstAnythingOtherThanAnArray($value, $message) {
+    public function testThrowsExceptionWhenMatchingAgainstAnythingOtherThanAnArray($value, $message)
+    {
         $this->expectExceptionMessage($message);
         $matcher = $this->matcher;
         $matcher($value, 123);
@@ -122,7 +132,8 @@ class ArrayMaxLengthTest extends PHPUnit_Framework_TestCase {
      * @param int $maxLength
      * @param string $message
      */
-    public function testThrowsExceptionWhenLengthIsTooShort(array $array, $maxLength, $message) {
+    public function testThrowsExceptionWhenLengthIsTooShort(array $array, $maxLength, $message)
+    {
         $this->expectExceptionMessage($message);
         $matcher = $this->matcher;
         $matcher($array, $maxLength);

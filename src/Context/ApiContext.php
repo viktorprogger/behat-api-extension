@@ -1,21 +1,25 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Imbo\BehatApiExtension\Context;
 
-use Imbo\BehatApiExtension\ArrayContainsComparator\Matcher\Jwt as JwtMatcher;
-use Imbo\BehatApiExtension\ArrayContainsComparator;
-use Imbo\BehatApiExtension\Exception\AssertionFailedException;
+use Assert\Assertion;
+use Assert\AssertionFailedException as AssertionFailure;
 use Behat\Behat\Context\SnippetAcceptingContext;
 use Behat\Gherkin\Node\PyStringNode;
 use Behat\Gherkin\Node\TableNode;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\RequestException;
-use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7;
-use Assert\Assertion;
-use Assert\AssertionFailedException as AssertionFailure;
+use GuzzleHttp\Psr7\Request;
+use Imbo\BehatApiExtension\ArrayContainsComparator;
+use Imbo\BehatApiExtension\ArrayContainsComparator\Matcher\Jwt as JwtMatcher;
+use Imbo\BehatApiExtension\Exception\AssertionFailedException;
+use InvalidArgumentException;
+use JsonException;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
-use InvalidArgumentException;
 use RuntimeException;
 use stdClass;
 
@@ -24,13 +28,14 @@ use stdClass;
  *
  * @author Christer Edvartsen <cogo@starzinger.net>
  */
-class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareContext, SnippetAcceptingContext {
+class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareContext, SnippetAcceptingContext
+{
     /**
      * Guzzle client
      *
      * @var ClientInterface
      */
-    protected $client;
+    protected ClientInterface $client;
 
     /**
      * Request instance
@@ -39,7 +44,7 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      *
      * @var RequestInterface
      */
-    protected $request;
+    protected RequestInterface $request;
 
     /**
      * Request options
@@ -48,35 +53,36 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      *
      * @var array
      */
-    protected $requestOptions = [];
+    protected array $requestOptions = [];
 
     /**
      * Response instance
      *
      * The response object will be set once the request has been made.
      *
-     * @var ResponseInterface
+     * @var ResponseInterface|null
      */
-    protected $response;
+    protected ?ResponseInterface $response = null;
 
     /**
      * Instance of the comparator that handles matching of JSON
      *
      * @var ArrayContainsComparator
      */
-    protected $arrayContainsComparator;
+    protected ArrayContainsComparator $arrayContainsComparator;
 
     /**
      * Does HTTP method has been manually set
      *
      * @var bool
      */
-    protected $forceHttpMethod = false;
+    protected bool $forceHttpMethod = false;
 
     /**
      * {@inheritdoc}
      */
-    public function setClient(ClientInterface $client) {
+    public function setClient(ClientInterface $client): self
+    {
         $this->client = $client;
         $this->request = new Request('GET', $client->getConfig('base_uri'));
 
@@ -86,7 +92,8 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
     /**
      * {@inheritdoc}
      */
-    public function setArrayContainsComparator(ArrayContainsComparator $comparator) {
+    public function setArrayContainsComparator(ArrayContainsComparator $comparator): self
+    {
         $this->arrayContainsComparator = $comparator;
 
         return $this;
@@ -97,31 +104,37 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      *
      * @param string $path Path to the image to add to the request
      * @param string $partName Multipart entry name
-     * @throws InvalidArgumentException If the $path does not point to a file, an exception is
-     *                                  thrown
+     *
      * @return self
      *
      * @Given I attach :path to the request as :partName
+     * @throws InvalidArgumentException If the $path does not point to a file, an exception is
+     *                                  thrown
      */
-    public function addMultipartFileToRequest($path, $partName) {
+    public function addMultipartFileToRequest(string $path, string $partName): self
+    {
         if (!file_exists($path)) {
             throw new InvalidArgumentException(sprintf('File does not exist: "%s"', $path));
         }
 
-        return $this->addMultipartPart([
-            'name' => $partName,
-            'contents' => fopen($path, 'r'),
-            'filename' => basename($path),
-        ]);
+        return $this->addMultipartPart(
+            [
+                'name' => $partName,
+                'contents' => fopen($path, 'rb'),
+                'filename' => basename($path),
+            ]
+        );
     }
 
     /**
      * Add an element to the multipart array
      *
      * @param array $part The part to add
+     *
      * @return self
      */
-    private function addMultipartPart($part) {
+    private function addMultipartPart(array $part): self
+    {
         if (!isset($this->requestOptions['multipart'])) {
             $this->requestOptions['multipart'] = [];
         }
@@ -135,16 +148,20 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Add multipart form parameters to the request
      *
      * @param TableNode $table Table with name / value pairs
+     *
      * @return self
      *
      * @Given the following multipart form parameters are set:
      */
-    public function setRequestMultipartFormParams(TableNode $table) {
+    public function setRequestMultipartFormParams(TableNode $table): self
+    {
         foreach ($table as $row) {
-            $this->addMultipartPart([
-                'name' => $row['name'],
-                'contents' => $row['value'],
-            ]);
+            $this->addMultipartPart(
+                [
+                    'name' => $row['name'],
+                    'contents' => $row['value'],
+                ]
+            );
         }
 
         return $this;
@@ -155,11 +172,13 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      *
      * @param string $username The username to authenticate with
      * @param string $password The password to authenticate with
+     *
      * @return self
      *
      * @Given I am authenticating as :username with password :password
      */
-    public function setBasicAuth($username, $password) {
+    public function setBasicAuth(string $username, string $password): self
+    {
         $this->requestOptions['auth'] = [$username, $password];
 
         return $this;
@@ -172,11 +191,13 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      *
      * @param string $header The header name
      * @param string $value The header value
+     *
      * @return self
      *
      * @Given the :header request header is :value
      */
-    public function setRequestHeader($header, $value) {
+    public function setRequestHeader(string $header, string $value): self
+    {
         $this->request = $this->request->withHeader($header, $value);
 
         return $this;
@@ -189,11 +210,13 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      *
      * @param string $header The header name
      * @param string $value The header value
+     *
      * @return self
      *
      * @Given the :header request header contains :value
      */
-    public function addRequestHeader($header, $value) {
+    public function addRequestHeader(string $header, string $value): self
+    {
         $this->request = $this->request->withAddedHeader($header, $value);
 
         return $this;
@@ -203,11 +226,13 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Set form parameters
      *
      * @param TableNode $table Table with name / value pairs
+     *
      * @return self
      *
      * @Given the following form parameters are set:
      */
-    public function setRequestFormParams(TableNode $table) {
+    public function setRequestFormParams(TableNode $table): self
+    {
         if (!isset($this->requestOptions['form_params'])) {
             $this->requestOptions['form_params'] = [];
         }
@@ -216,7 +241,9 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
             $name = $row['name'];
             $value = $row['value'];
 
-            if (isset($this->requestOptions['form_params'][$name]) && !is_array($this->requestOptions['form_params'][$name])) {
+            if (isset($this->requestOptions['form_params'][$name]) && !is_array(
+                    $this->requestOptions['form_params'][$name]
+                )) {
                 $this->requestOptions['form_params'][$name] = [$this->requestOptions['form_params'][$name]];
             }
 
@@ -234,13 +261,15 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Set the request body to a string
      *
      * @param resource|string|PyStringNode $string The content to set as the request body
-     * @throws InvalidArgumentException If form_params or multipart is used in the request options
-     *                                  an exception will be thrown as these can't be combined.
+     *
      * @return self
      *
      * @Given the request body is:
+     * @throws InvalidArgumentException If form_params or multipart is used in the request options
+     *                                  an exception will be thrown as these can't be combined.
      */
-    public function setRequestBody($string) {
+    public function setRequestBody($string): self
+    {
         if (!empty($this->requestOptions['multipart']) || !empty($this->requestOptions['form_params'])) {
             throw new InvalidArgumentException(
                 'It\'s not allowed to set a request body when using multipart/form-data or form parameters.'
@@ -261,12 +290,14 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * mime type of the file.
      *
      * @param string $path Path to a file
-     * @throws InvalidArgumentException
+     *
      * @return self
      *
      * @Given the request body contains :path
+     * @throws InvalidArgumentException
      */
-    public function setRequestBodyToFileResource($path) {
+    public function setRequestBodyToFileResource(string $path): self
+    {
         if (!file_exists($path)) {
             throw new InvalidArgumentException(sprintf('File does not exist: "%s"', $path));
         }
@@ -278,7 +309,7 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
         // Set the Content-Type request header and the request body
         return $this
             ->setRequestHeader('Content-Type', mime_content_type($path))
-            ->setRequestBody(fopen($path, 'r'));
+            ->setRequestBody(fopen($path, 'rb'));
     }
 
     /**
@@ -287,19 +318,23 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * @param string $name String identifying the token
      * @param string $secret The secret used to sign the token
      * @param PyStringNode $payload The payload for the JWT
-     * @throws RuntimeException
+     *
      * @return self
      *
      * @Given the response body contains a JWT identified by :name, signed with :secret:
+     * @throws RuntimeException
      */
-    public function addJwtToken($name, $secret, PyStringNode $payload) {
+    public function addJwtToken(string $name, string $secret, PyStringNode $payload): self
+    {
         $jwtMatcher = $this->arrayContainsComparator->getMatcherFunction('jwt');
 
         if (!($jwtMatcher instanceof JwtMatcher)) {
-            throw new RuntimeException(sprintf(
-                'Matcher registered for the @jwt() matcher function must be an instance of %s',
-                JwtMatcher::class
-            ));
+            throw new RuntimeException(
+                sprintf(
+                    'Matcher registered for the @jwt() matcher function must be an instance of %s',
+                    JwtMatcher::class
+                )
+            );
         }
 
         $jwtMatcher->addToken($name, $this->jsonDecode((string) $payload), $secret);
@@ -311,13 +346,15 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Request a path
      *
      * @param string $path The path to request
-     * @param string $method The HTTP method to use
+     * @param string|null $method The HTTP method to use
+     *
      * @return self
      *
      * @When I request :path
      * @When I request :path using HTTP :method
      */
-    public function requestPath($path, $method = null) {
+    public function requestPath(string $path, ?string $method = null): self
+    {
         $this->setRequestPath($path);
 
         if (null === $method) {
@@ -333,12 +370,14 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Assert the HTTP response code
      *
      * @param int $code The HTTP response code
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the response code is :code
+     * @throws AssertionFailedException
      */
-    public function assertResponseCodeIs($code) {
+    public function assertResponseCodeIs(int $code): void
+    {
         $this->requireResponse();
 
         try {
@@ -356,12 +395,14 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Assert the HTTP response code is not a specific code
      *
      * @param int $code The HTTP response code
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the response code is not :code
+     * @throws AssertionFailedException
      */
-    public function assertResponseCodeIsNot($code) {
+    public function assertResponseCodeIsNot(int $code): void
+    {
         $this->requireResponse();
 
         try {
@@ -379,20 +420,26 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Assert that the HTTP response reason phrase equals a given value
      *
      * @param string $phrase Expected HTTP response reason phrase
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the response reason phrase is :phrase
+     * @throws AssertionFailedException
      */
-    public function assertResponseReasonPhraseIs($phrase) {
+    public function assertResponseReasonPhraseIs(string $phrase): void
+    {
         $this->requireResponse();
 
         try {
-            Assertion::same($phrase, $actual = $this->response->getReasonPhrase(), sprintf(
-                'Expected response reason phrase "%s", got "%s".',
+            Assertion::same(
                 $phrase,
-                $actual
-            ));
+                $actual = $this->response->getReasonPhrase(),
+                sprintf(
+                    'Expected response reason phrase "%s", got "%s".',
+                    $phrase,
+                    $actual
+                )
+            );
         } catch (AssertionFailure $e) {
             throw new AssertionFailedException($e->getMessage());
         }
@@ -402,19 +449,25 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Assert that the HTTP response reason phrase does not equal a given value
      *
      * @param string $phrase Reason phrase that the HTTP response should not equal
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the response reason phrase is not :phrase
+     * @throws AssertionFailedException
      */
-    public function assertResponseReasonPhraseIsNot($phrase) {
+    public function assertResponseReasonPhraseIsNot(string $phrase): void
+    {
         $this->requireResponse();
 
         try {
-            Assertion::notSame($phrase, $this->response->getReasonPhrase(), sprintf(
-                'Did not expect response reason phrase "%s".',
-                $phrase
-            ));
+            Assertion::notSame(
+                $phrase,
+                $this->response->getReasonPhrase(),
+                sprintf(
+                    'Did not expect response reason phrase "%s".',
+                    $phrase
+                )
+            );
         } catch (AssertionFailure $e) {
             throw new AssertionFailedException($e->getMessage());
         }
@@ -424,12 +477,14 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Assert that the HTTP response reason phrase matches a regular expression
      *
      * @param string $pattern Regular expression pattern
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the response reason phrase matches :expression
+     * @throws AssertionFailedException
      */
-    public function assertResponseReasonPhraseMatches($pattern) {
+    public function assertResponseReasonPhraseMatches(string $pattern): void
+    {
         $this->requireResponse();
 
         try {
@@ -440,7 +495,8 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
                     'Expected the response reason phrase to match the regular expression "%s", got "%s".',
                     $pattern,
                     $actual
-                ));
+                )
+            );
         } catch (AssertionFailure $e) {
             throw new AssertionFailedException($e->getMessage());
         }
@@ -450,12 +506,14 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Assert that the HTTP response status line equals a given value
      *
      * @param string $line Expected HTTP response status line
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the response status line is :line
+     * @throws AssertionFailedException
      */
-    public function assertResponseStatusLineIs($line) {
+    public function assertResponseStatusLineIs(string $line): void
+    {
         $this->requireResponse();
 
         try {
@@ -465,11 +523,15 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
                 $this->response->getReasonPhrase()
             );
 
-            Assertion::same($line, $actualStatusLine, sprintf(
-                'Expected response status line "%s", got "%s".',
+            Assertion::same(
                 $line,
-                $actualStatusLine
-            ));
+                $actualStatusLine,
+                sprintf(
+                    'Expected response status line "%s", got "%s".',
+                    $line,
+                    $actualStatusLine
+                )
+            );
         } catch (AssertionFailure $e) {
             throw new AssertionFailedException($e->getMessage());
         }
@@ -479,12 +541,14 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Assert that the HTTP response status line does not equal a given value
      *
      * @param string $line Value that the HTTP response status line must not equal
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the response status line is not :line
+     * @throws AssertionFailedException
      */
-    public function assertResponseStatusLineIsNot($line) {
+    public function assertResponseStatusLineIsNot(string $line): void
+    {
         $this->requireResponse();
 
         try {
@@ -494,10 +558,14 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
                 $this->response->getReasonPhrase()
             );
 
-            Assertion::notSame($line, $actualStatusLine, sprintf(
-                'Did not expect response status line "%s".',
-                $line
-            ));
+            Assertion::notSame(
+                $line,
+                $actualStatusLine,
+                sprintf(
+                    'Did not expect response status line "%s".',
+                    $line
+                )
+            );
         } catch (AssertionFailure $e) {
             throw new AssertionFailedException($e->getMessage());
         }
@@ -507,12 +575,14 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Assert that the HTTP response status line matches a regular expression
      *
      * @param string $pattern Regular expression pattern
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the response status line matches :expression
+     * @throws AssertionFailedException
      */
-    public function assertResponseStatusLineMatches($pattern) {
+    public function assertResponseStatusLineMatches(string $pattern): void
+    {
         $this->requireResponse();
 
         try {
@@ -529,7 +599,8 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
                     'Expected the response status line to match the regular expression "%s", got "%s".',
                     $pattern,
                     $actualStatusLine
-                ));
+                )
+            );
         } catch (AssertionFailure $e) {
             throw new AssertionFailedException($e->getMessage());
         }
@@ -547,24 +618,29 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * - server error
      *
      * @param string $group Name of the group that the response code should be in
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the response is :group
+     * @throws AssertionFailedException
      */
-    public function assertResponseIs($group) {
+    public function assertResponseIs(string $group): void
+    {
         $this->requireResponse();
         $range = $this->getResponseCodeGroupRange($group);
+        $code = $this->response->getStatusCode();
 
         try {
-            Assertion::range($code = $this->response->getStatusCode(), $range['min'], $range['max']);
+            Assertion::range($code, $range['min'], $range['max']);
         } catch (AssertionFailure $e) {
-            throw new AssertionFailedException(sprintf(
-                'Expected response group "%s", got "%s" (response code: %d).',
-                $group,
-                $this->getResponseGroup($code),
-                $code
-            ));
+            throw new AssertionFailedException(
+                sprintf(
+                    'Expected response group "%s", got "%s" (response code: %d).',
+                    $group,
+                    $this->getResponseGroup($code),
+                    $code
+                )
+            );
         }
     }
 
@@ -580,12 +656,14 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * - server error
      *
      * @param string $group Name of the group that the response code is not in
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the response is not :group
+     * @throws AssertionFailedException
      */
-    public function assertResponseIsNot($group) {
+    public function assertResponseIsNot(string $group): void
+    {
         try {
             $this->assertResponseIs($group);
         } catch (AssertionFailedException $e) {
@@ -593,23 +671,27 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
             return;
         }
 
-        throw new AssertionFailedException(sprintf(
-            'Did not expect response to be in the "%s" group (response code: %d).',
-            $group,
-            $this->response->getStatusCode()
-        ));
+        throw new AssertionFailedException(
+            sprintf(
+                'Did not expect response to be in the "%s" group (response code: %d).',
+                $group,
+                $this->response->getStatusCode()
+            )
+        );
     }
 
     /**
      * Assert that a response header exists
      *
      * @param string $header Then name of the header
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the :header response header exists
+     * @throws AssertionFailedException
      */
-    public function assertResponseHeaderExists($header) {
+    public function assertResponseHeaderExists(string $header): void
+    {
         $this->requireResponse();
 
         try {
@@ -626,12 +708,14 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Assert that a response header does not exist
      *
      * @param string $header Then name of the header
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the :header response header does not exist
+     * @throws AssertionFailedException
      */
-    public function assertResponseHeaderDoesNotExist($header) {
+    public function assertResponseHeaderDoesNotExist(string $header): void
+    {
         $this->requireResponse();
 
         try {
@@ -649,12 +733,14 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      *
      * @param string $header The name of the header
      * @param string $value The value to compare with
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the :header response header is :value
+     * @throws AssertionFailedException
      */
-    public function assertResponseHeaderIs($header, $value) {
+    public function assertResponseHeaderIs(string $header, string $value): void
+    {
         $this->requireResponse();
 
         try {
@@ -678,12 +764,14 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      *
      * @param string $header The name of the header
      * @param string $value The value to compare with
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the :header response header is not :value
+     * @throws AssertionFailedException
      */
-    public function assertResponseHeaderIsNot($header, $value) {
+    public function assertResponseHeaderIsNot(string $header, string $value): void
+    {
         $this->requireResponse();
 
         try {
@@ -706,12 +794,14 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      *
      * @param string $header The name of the header
      * @param string $pattern The regular expression pattern
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the :header response header matches :pattern
+     * @throws AssertionFailedException
      */
-    public function assertResponseHeaderMatches($header, $pattern) {
+    public function assertResponseHeaderMatches(string $header, string $pattern): void
+    {
         $this->requireResponse();
 
         try {
@@ -733,21 +823,28 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
     /**
      * Assert that the response body contains an empty JSON object
      *
-     * @throws AssertionFailedException
      * @return void
      *
      * @Then the response body is an empty JSON object
+     * @throws AssertionFailedException
      */
-    public function assertResponseBodyIsAnEmptyJsonObject() {
+    public function assertResponseBodyIsAnEmptyJsonObject(): void
+    {
         $this->requireResponse();
         $body = $this->getResponseBody();
 
+        $encoded = $this->jsonEncode($body, 'Expected response body to be an empty JSON object, got "%s".');
+
         try {
             Assertion::isInstanceOf($body, 'stdClass', 'Expected response body to be a JSON object.');
-            Assertion::same('{}', $encoded = json_encode($body, JSON_PRETTY_PRINT), sprintf(
-                'Expected response body to be an empty JSON object, got "%s".',
-                $encoded
-            ));
+            Assertion::same(
+                '{}',
+                $encoded,
+                sprintf(
+                    'Expected response body to be an empty JSON object, got "%s".',
+                    $encoded
+                )
+            );
         } catch (AssertionFailure $e) {
             throw new AssertionFailedException($e->getMessage());
         }
@@ -756,19 +853,23 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
     /**
      * Assert that the response body contains an empty JSON array
      *
-     * @throws AssertionFailedException
      * @return void
      *
      * @Then the response body is an empty JSON array
+     * @throws AssertionFailedException
      */
-    public function assertResponseBodyIsAnEmptyJsonArray() {
+    public function assertResponseBodyIsAnEmptyJsonArray(): void
+    {
         $this->requireResponse();
 
         try {
             Assertion::same(
                 [],
                 $body = $this->getResponseBodyArray(),
-                sprintf('Expected response body to be an empty JSON array, got "%s".', json_encode($body, JSON_PRETTY_PRINT))
+                sprintf(
+                    'Expected response body to be an empty JSON array, got "%s".',
+                    $this->jsonEncode($body)
+                )
             );
         } catch (AssertionFailure $e) {
             throw new AssertionFailedException($e->getMessage());
@@ -779,14 +880,15 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Assert that the response body contains an array with a specific length
      *
      * @param int $length The length of the array
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the response body is a JSON array of length :length
+     * @throws AssertionFailedException
      */
-    public function assertResponseBodyJsonArrayLength($length) {
+    public function assertResponseBodyJsonArrayLength(int $length): void
+    {
         $this->requireResponse();
-        $length = (int) $length;
 
         try {
             Assertion::count(
@@ -797,7 +899,7 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
                     $length,
                     $length === 1 ? 'y' : 'ies',
                     count($body),
-                    json_encode($body, JSON_PRETTY_PRINT)
+                    $this->jsonEncode($body)
                 )
             );
         } catch (AssertionFailure $e) {
@@ -809,15 +911,15 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Assert that the response body contains an array with a length of at least a given length
      *
      * @param int $length The length to use in the assertion
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the response body is a JSON array with a length of at least :length
+     * @throws AssertionFailedException
      */
-    public function assertResponseBodyJsonArrayMinLength($length) {
+    public function assertResponseBodyJsonArrayMinLength(int $length): void
+    {
         $this->requireResponse();
-
-        $length = (int) $length;
         $body = $this->getResponseBodyArray();
 
         try {
@@ -827,9 +929,9 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
                 sprintf(
                     'Expected response body to be a JSON array with at least %d entr%s, got %d: "%s".',
                     $length,
-                    (int) $length === 1 ? 'y' : 'ies',
+                    $length === 1 ? 'y' : 'ies',
                     $bodyLength,
-                    json_encode($body, JSON_PRETTY_PRINT)
+                    $this->jsonEncode($body)
                 )
             );
         } catch (AssertionFailure $e) {
@@ -841,15 +943,15 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Assert that the response body contains an array with a length of at most a given length
      *
      * @param int $length The length to use in the assertion
-     * @throws AssertionFailedException
+     *
      * @return void
      *
      * @Then the response body is a JSON array with a length of at most :length
+     * @throws AssertionFailedException
      */
-    public function assertResponseBodyJsonArrayMaxLength($length) {
+    public function assertResponseBodyJsonArrayMaxLength(int $length): void
+    {
         $this->requireResponse();
-
-        $length = (int) $length;
         $body = $this->getResponseBodyArray();
 
         try {
@@ -859,9 +961,9 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
                 sprintf(
                     'Expected response body to be a JSON array with at most %d entr%s, got %d: "%s".',
                     $length,
-                    (int) $length === 1 ? 'y' : 'ies',
+                    $length === 1 ? 'y' : 'ies',
                     $bodyLength,
-                    json_encode($body, JSON_PRETTY_PRINT)
+                    $this->jsonEncode($body)
                 )
             );
         } catch (AssertionFailure $e) {
@@ -873,22 +975,28 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
     /**
      * Assert that the response body matches some content
      *
-     * @param PyStringNode $content The content to match the response body against
-     * @throws AssertionFailedException
+     * @param PyStringNode $node The content to match the response body against
+     *
      * @return void
      *
      * @Then the response body is:
+     * @throws AssertionFailedException
      */
-    public function assertResponseBodyIs(PyStringNode $content) {
+    public function assertResponseBodyIs(PyStringNode $node): void
+    {
         $this->requireResponse();
-        $content = (string) $content;
+        $content = (string) $node;
 
         try {
-            Assertion::same($body = (string) $this->response->getBody(), $content, sprintf(
-                'Expected response body "%s", got "%s".',
+            Assertion::same(
+                $body = (string) $this->response->getBody(),
                 $content,
-                $body
-            ));
+                sprintf(
+                    'Expected response body "%s", got "%s".',
+                    $content,
+                    $body
+                )
+            );
         } catch (AssertionFailure $e) {
             throw new AssertionFailedException($e->getMessage());
         }
@@ -897,21 +1005,27 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
     /**
      * Assert that the response body does not match some content
      *
-     * @param PyStringNode $content The content that the response body should not match
-     * @throws AssertionFailedException
+     * @param PyStringNode $node The content that the response body should not match
+     *
      * @return void
      *
      * @Then the response body is not:
+     * @throws AssertionFailedException
      */
-    public function assertResponseBodyIsNot(PyStringNode $content) {
+    public function assertResponseBodyIsNot(PyStringNode $node): void
+    {
         $this->requireResponse();
-        $content = (string) $content;
+        $content = (string) $node;
 
         try {
-            Assertion::notSame((string) $this->response->getBody(), $content, sprintf(
-                'Did not expect response body to be "%s".',
-                $content
-            ));
+            Assertion::notSame(
+                (string) $this->response->getBody(),
+                $content,
+                sprintf(
+                    'Did not expect response body to be "%s".',
+                    $content
+                )
+            );
         } catch (AssertionFailure $e) {
             throw new AssertionFailedException($e->getMessage());
         }
@@ -920,22 +1034,28 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
     /**
      * Assert that the response body matches some content using a regular expression
      *
-     * @param PyStringNode $pattern The regular expression pattern to use for the match
-     * @throws AssertionFailedException
+     * @param PyStringNode $node The regular expression pattern to use for the match
+     *
      * @return void
      *
      * @Then the response body matches:
+     * @throws AssertionFailedException
      */
-    public function assertResponseBodyMatches(PyStringNode $pattern) {
+    public function assertResponseBodyMatches(PyStringNode $node): void
+    {
         $this->requireResponse();
-        $pattern = (string) $pattern;
+        $pattern = (string) $node;
 
         try {
-            Assertion::regex($body = (string) $this->response->getBody(), $pattern, sprintf(
-                'Expected response body to match regular expression "%s", got "%s".',
+            Assertion::regex(
+                $body = (string) $this->response->getBody(),
                 $pattern,
-                $body
-            ));
+                sprintf(
+                    'Expected response body to match regular expression "%s", got "%s".',
+                    $pattern,
+                    $body
+                )
+            );
         } catch (AssertionFailure $e) {
             throw new AssertionFailedException($e->getMessage());
         }
@@ -944,20 +1064,22 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
     /**
      * Assert that the response body contains all keys / values in the parameter
      *
-     * @param PyStringNode $contains
-     * @throws AssertionFailedException
+     * @param PyStringNode $node
+     *
      * @return void
      *
      * @Then the response body contains JSON:
+     * @throws AssertionFailedException
      */
-    public function assertResponseBodyContainsJson(PyStringNode $contains) {
+    public function assertResponseBodyContainsJson(PyStringNode $node): void
+    {
         $this->requireResponse();
 
         // Decode the parameter to the step as an array and make sure it's valid JSON
-        $contains = $this->jsonDecode((string) $contains);
+        $contains = $this->jsonDecode((string) $node);
 
         // Get the decoded response body and make sure it's decoded to an array
-        $body = json_decode(json_encode($this->getResponseBody()), true);
+        $body = $this->jsonDecode($this->jsonEncode($this->getResponseBody()));
 
         try {
             // Compare the arrays, on error this will throw an exception
@@ -972,10 +1094,11 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
     /**
      * Send the current request and set the response instance
      *
-     * @throws RequestException
      * @return self
+     * @throws RequestException
      */
-    protected function sendRequest() {
+    protected function sendRequest(): self
+    {
         if (!empty($this->requestOptions['form_params']) && !$this->forceHttpMethod) {
             $this->setRequestMethod('POST');
         }
@@ -999,7 +1122,7 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
                 } else {
                     $this->requestOptions['multipart'][] = [
                         'name' => $name,
-                        'contents' => $contents
+                        'contents' => $contents,
                     ];
                 }
             }
@@ -1029,7 +1152,8 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      *
      * @throws RuntimeException
      */
-    protected function requireResponse() {
+    protected function requireResponse(): void
+    {
         if (!$this->response) {
             throw new RuntimeException('The request has not been made yet, so no response object exists.');
         }
@@ -1039,11 +1163,13 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Get the min and max values for a response body group
      *
      * @param string $group The name of the group
-     * @throws InvalidArgumentException
+     *
      * @return array An array with two keys, min and max, which represents the min and max values
      *               for $group
+     * @throws InvalidArgumentException
      */
-    protected function getResponseCodeGroupRange($group) {
+    protected function getResponseCodeGroupRange(string $group): array
+    {
         switch ($group) {
             case 'informational':
                 $min = 100;
@@ -1078,37 +1204,43 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
     /**
      * Get the "response group" based on a status code
      *
-     * @param int $code The respose code
+     * @param int $code The response code
+     *
      * @return string
      */
-    protected function getResponseGroup($code) {
-        $code = (int) $code;
-
-        if ($code >= 500) {
-            return 'server error';
-        } else if ($code >= 400) {
-            return 'client error';
-        } else if ($code >= 300) {
-            return 'redirection';
-        } else if ($code >= 200) {
-            return 'success';
+    protected function getResponseGroup(int $code): string
+    {
+        switch (true) {
+            case $code >= 500:
+                return 'server error';
+            case $code >= 400:
+                return 'client error';
+            case $code >= 300:
+                return 'redirection';
+            case $code >= 200:
+                return 'success';
+            default:
+                return 'informational';
         }
-
-        return 'informational';
     }
 
     /**
      * Validate a response code
      *
      * @param int $code
-     * @throws InvalidArgumentException
+     *
      * @return int
+     * @throws InvalidArgumentException
      */
-    protected function validateResponseCode($code) {
-        $code = (int) $code;
-
+    protected function validateResponseCode(int $code): int
+    {
         try {
-            Assertion::range($code, 100, 599, sprintf('Response code must be between 100 and 599, got %d.', $code));
+            Assertion::range(
+                $code,
+                100,
+                599,
+                sprintf('Response code must be between 100 and 599, got %d.', $code)
+            );
         } catch (AssertionFailure $e) {
             throw new InvalidArgumentException($e->getMessage());
         }
@@ -1120,9 +1252,11 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Update the path of the request
      *
      * @param string $path The path to request
+     *
      * @return self
      */
-    protected function setRequestPath($path) {
+    protected function setRequestPath(string $path): self
+    {
         // Resolve the path with the base_uri set in the client
         $uri = Psr7\Uri::resolve($this->client->getConfig('base_uri'), Psr7\uri_for($path));
         $this->request = $this->request->withUri($uri);
@@ -1137,9 +1271,11 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * @param boolean $force Force the HTTP method. If set to false the method set CAN be
      *                       overridden (this occurs for instance when adding form parameters to the
      *                       request, and not specifying HTTP POST for the request)
+     *
      * @return self
      */
-    protected function setRequestMethod($method, $force = true) {
+    protected function setRequestMethod(string $method, bool $force = true): self
+    {
         $this->request = $this->request->withMethod($method);
         $this->forceHttpMethod = $force;
 
@@ -1149,15 +1285,17 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
     /**
      * Get the JSON-encoded array or stdClass from the response body
      *
-     * @throws InvalidArgumentException
      * @return array|stdClass
+     * @throws InvalidArgumentException
      */
-    protected function getResponseBody() {
-        $body = json_decode((string) $this->response->getBody());
+    protected function getResponseBody()
+    {
+        $body = $this->jsonDecode(
+            (string) $this->response->getBody(),
+            'The response body does not contain valid JSON data.'
+        );
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new InvalidArgumentException('The response body does not contain valid JSON data.');
-        } else if (!is_array($body) && !($body instanceof stdClass)) {
+        if (!is_array($body) && !($body instanceof stdClass)) {
             throw new InvalidArgumentException('The response body does not contain a valid JSON array / object.');
         }
 
@@ -1167,10 +1305,11 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
     /**
      * Get the response body as an array
      *
-     * @throws InvalidArgumentException
      * @return array
+     * @throws InvalidArgumentException
      */
-    protected function getResponseBodyArray() {
+    protected function getResponseBodyArray(): array
+    {
         if (!is_array($body = $this->getResponseBody())) {
             throw new InvalidArgumentException('The response body does not contain a valid JSON array.');
         }
@@ -1182,19 +1321,44 @@ class ApiContext implements ApiClientAwareContext, ArrayContainsComparatorAwareC
      * Convert some variable to a JSON-array
      *
      * @param string $value The value to decode
-     * @param string $errorMessage Optional error message
-     * @throws InvalidArgumentException
+     * @param string|null $errorMessage Optional error message
+     *
      * @return array
+     * @throws InvalidArgumentException
      */
-    protected function jsonDecode($value, $errorMessage = null) {
-        $decoded = json_decode($value, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
+    protected function jsonDecode(string $value, ?string $errorMessage = null): array
+    {
+        try {
+            return json_decode($value, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException $e) {
             throw new InvalidArgumentException(
                 $errorMessage ?: 'The supplied parameter is not a valid JSON object.'
             );
         }
+    }
 
-        return $decoded;
+    /**
+     * @param array|stdClass $body
+     * @param string|null $message
+     *
+     * @return false|string
+     * @throws AssertionFailedException
+     */
+    private function jsonEncode($body, string $message = 'Expected a json-encodable parameter, got "%s"')
+    {
+        try {
+            $encoded = json_encode($body, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
+        } catch (JsonException $e) {
+            throw new AssertionFailedException(
+                strpos($message, '%s') === false
+                    ? $message
+                    : sprintf(
+                    $message,
+                    is_object($body) ? get_class($body) : var_export($body)
+                )
+            );
+        }
+
+        return $encoded;
     }
 }

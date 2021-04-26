@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Imbo\BehatApiExtension\Context;
 
 use Behat\Behat\Context\Context;
@@ -16,5 +19,5 @@ interface ApiClientAwareContext extends Context {
      * @param ClientInterface $client
      * @return self
      */
-    function setClient(ClientInterface $client);
+    function setClient(ClientInterface $client): self;
 }

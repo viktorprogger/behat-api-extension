@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Imbo\BehatApiExtension\Context;
 
 use Imbo\BehatApiExtension\ArrayContainsComparator;
@@ -16,5 +19,5 @@ interface ArrayContainsComparatorAwareContext extends Context {
      * @param ArrayContainsComparator $comparator
      * @return self
      */
-    function setArrayContainsComparator(ArrayContainsComparator $comparator);
+    function setArrayContainsComparator(ArrayContainsComparator $comparator): self;
 }

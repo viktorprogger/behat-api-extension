@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Imbo\BehatApiExtension\ArrayContainsComparator\Matcher;
 
 use InvalidArgumentException;
@@ -8,36 +11,45 @@ use InvalidArgumentException;
  *
  * @author Christer Edvartsen <cogo@starzinger.net>
  */
-class LessThan {
+class LessThan
+{
     /**
      * Match a numeric value
      *
      * @param numeric $number A variable
      * @param numeric $max The max value of $number
-     * @throws InvalidArgumentException
+     *
      * @return void
+     * @throws InvalidArgumentException
      */
-    public function __invoke($number, $max) {
+    public function __invoke($number, $max)
+    {
         if (!is_numeric($number)) {
-            throw new InvalidArgumentException(sprintf(
-                '"%s" is not numeric.',
-                $number
-            ));
+            throw new InvalidArgumentException(
+                sprintf(
+                    '"%s" is not numeric.',
+                    $number
+                )
+            );
         }
 
         if (!is_numeric($max)) {
-            throw new InvalidArgumentException(sprintf(
-                '"%s" is not numeric.',
-                $max
-            ));
+            throw new InvalidArgumentException(
+                sprintf(
+                    '"%s" is not numeric.',
+                    $max
+                )
+            );
         }
 
         if ($number >= $max) {
-            throw new InvalidArgumentException(sprintf(
-                '"%s" is not less than "%s".',
-                $number,
-                $max
-            ));
+            throw new InvalidArgumentException(
+                sprintf(
+                    '"%s" is not less than "%s".',
+                    $number,
+                    $max
+                )
+            );
         }
     }
 }

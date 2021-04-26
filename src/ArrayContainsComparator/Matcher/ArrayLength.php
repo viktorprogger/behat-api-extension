@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Imbo\BehatApiExtension\ArrayContainsComparator\Matcher;
 
 use InvalidArgumentException;
@@ -17,7 +20,7 @@ class ArrayLength {
      * @throws InvalidArgumentException
      * @return void
      */
-    public function __invoke($array, $length) {
+    public function __invoke(array $array, int $length) {
         // Encode / decode to make sure we have a "list"
         $array = json_decode(json_encode($array));
 
@@ -28,7 +31,6 @@ class ArrayLength {
             ));
         }
 
-        $length = (int) $length;
         $actualLength = count($array);
 
         if ($actualLength !== $length) {

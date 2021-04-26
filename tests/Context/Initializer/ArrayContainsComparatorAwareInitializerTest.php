@@ -1,20 +1,25 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Imbo\BehatApiExtension\Context\Initializer;
 
-use Imbo\BehatApiExtension\Context\ArrayContainsComparatorAwareContext;
 use Imbo\BehatApiExtension\ArrayContainsComparator;
 use Imbo\BehatApiExtension\ArrayContainsComparator\Matcher;
-use PHPUnit_Framework_TestCase;
+use Imbo\BehatApiExtension\Context\ArrayContainsComparatorAwareContext;
+use PHPUnit\Framework\TestCase;
 
 /**
  * @coversDefaultClass Imbo\BehatApiExtension\Context\Initializer\ArrayContainsComparatorAwareInitializer
  * @testdox Initializer for array contains comparator aware contexts
  */
-class ArrayContainsComparatorAwareInitializerTest extends PHPUnit_Framework_TestCase {
+class ArrayContainsComparatorAwareInitializerTest extends TestCase
+{
     /**
      * @covers ::__construct
      */
-    public function testInitializerInjectsDefaultMatcherFunctions() {
+    public function testInitializerInjectsDefaultMatcherFunctions()
+    {
         $comparator = $this->createMock(ArrayContainsComparator::class);
         $comparator
             ->expects($this->exactly(8))
@@ -37,7 +42,8 @@ class ArrayContainsComparatorAwareInitializerTest extends PHPUnit_Framework_Test
     /**
      * @covers ::initializeContext
      */
-    public function testInjectsComparatorWhenInitializingContext() {
+    public function testInjectsComparatorWhenInitializingContext()
+    {
         $comparator = $this->createMock(ArrayContainsComparator::class);
         $comparator
             ->expects($this->exactly(8))
